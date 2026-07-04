@@ -66,8 +66,17 @@ No external Swift packages. Beacon is **not sandboxed** — it needs to invoke `
 
 ### Homebrew Cask
 
+Beacon is distributed through a **third-party Homebrew tap** — a source you add (trust) once, then install from:
+
 ```bash
-brew install --cask lighthouse-computer/tap/beacon
+brew tap lighthouse-computer/taps
+brew install --cask beacon
+```
+
+Or as a single command (Homebrew adds the tap automatically the first time you reference its full `owner/tap/cask` path):
+
+```bash
+brew install --cask lighthouse-computer/taps/beacon
 ```
 
 ### Pre-built download
@@ -77,8 +86,8 @@ Grab `Beacon.app.zip` from the [Releases page](../../releases), unzip, and drag 
 ### Build from source
 
 ```bash
-git clone https://github.com/lighthouse-computer/beacon.git
-cd beacon
+git clone https://github.com/lighthouse-computer/Beacon.git
+cd Beacon
 ./Scripts/build_app.sh --run        # builds + launches
 # or
 ./Scripts/build_app.sh --install    # builds + copies to /Applications + launches

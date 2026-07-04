@@ -65,4 +65,4 @@ These are product constraints, not style preferences:
 
 ## Release flow
 
-Push a `v*` tag → `.github/workflows/release.yml` builds, zips `Beacon.app`, publishes a GitHub Release with a `.sha256` sidecar. The Homebrew cask (`Distribution/beacon.rb`, live copy in a separate `homebrew-tap` repo) is auto-bumped by `Distribution/tap-autobump.yml`, which verifies the sha256 against that sidecar. Version lives in `Scripts/Info.plist`; the tag drives the bundle version at build time. See `DISTRIBUTION.md` for signing/notarization.
+Push a `v*` tag → `.github/workflows/release.yml` builds, zips `Beacon.app`, publishes a GitHub Release with a `.sha256` sidecar. The Homebrew cask (`Distribution/beacon.rb` is a seed; the live copy is `Casks/beacon.rb` in the `lighthouse-computer/Homebrew-Taps` tap) is auto-bumped by that tap's `autobump.yml`, which verifies the sha256 against that sidecar. Version lives in `Scripts/Info.plist`; the tag drives the bundle version at build time. See `DISTRIBUTION.md` for signing/notarization.

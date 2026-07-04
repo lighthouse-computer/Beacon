@@ -62,16 +62,13 @@ To notarize in CI instead, uncomment the signing/notarization block in `.github/
 
 ## Step 3 — Homebrew Cask
 
-`Distribution/beacon.rb` is a **seed** cask. The live copy lives in a separate `homebrew-tap` repo at `Casks/beacon.rb` and is kept current automatically by `Distribution/tap-autobump.yml` (copied into that tap repo): it polls this repo's latest release hourly, verifies the download's sha256 against the release's `.sha256` sidecar, and direct-commits the version + hash bump. You never hand-edit the tap copy.
+The live cask is **`Casks/beacon.rb` in the [`lighthouse-computer/Homebrew-Taps`](https://github.com/lighthouse-computer/Homebrew-Taps) tap** — a multi-app tap that users add as `lighthouse-computer/taps`. It is kept current automatically by that tap's `.github/workflows/autobump.yml`: hourly it polls this repo's latest release, verifies the download's sha256 against the `.sha256` sidecar, and direct-commits the `version` + `sha256` bump. You never hand-edit it. `Distribution/beacon.rb` in this repo is only a **seed/reference** copy.
 
-### Bootstrap a self-hosted tap (fastest path)
+Users install it (a tap is a third-party source you add/trust once):
 
 ```bash
-# 1. Create a repo named `homebrew-tap` under the lighthouse-computer org.
-# 2. Add Distribution/beacon.rb as Casks/beacon.rb, and tap-autobump.yml as
-#    .github/workflows/tap-autobump.yml, in that repo.
-# 3. Users install with:
-brew install --cask lighthouse-computer/tap/beacon
+brew tap lighthouse-computer/taps
+brew install --cask beacon
 ```
 
 For **instant** cask updates (instead of the hourly poll), create a fine-grained PAT with `actions: write` on the tap repo, store it as the `TAP_DISPATCH_TOKEN` secret here, and uncomment the "Trigger tap autobump" step in `release.yml`.
