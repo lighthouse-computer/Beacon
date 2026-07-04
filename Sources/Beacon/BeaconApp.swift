@@ -477,39 +477,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     /// view-model's always-on `onSpeedUpdate` feed so the menu bar keeps ticking
     /// independently of UI visibility.
     ///
-    /// Compact one-line format (`↓ N ↑ N`, no `B/s` suffix) so the item stays
-    /// narrow and survives even a packed menu bar. A single space separates the
-    /// download and upload readings — the ↓/↑ glyphs already delimit them, so a
-    /// gap reads cleaner than a punctuation separator.
+    /// One-line format (`↓ N ↑ N`) using the same full `B/s`–`TB/s` units as the
+    /// popover and charts (`FormatUtility.formatSpeed`), so every speed readout in
+    /// the app speaks one unit vocabulary. A single space separates the download
+    /// and upload readings — the ↓/↑ glyphs already delimit them, so a gap reads
+    /// cleaner than a punctuation separator.
     private func updateMenuBarTitle(with speed: NetworkSpeed) {
         guard let button = statusItem?.button else { return }
-        let down = Self.compactSpeed(speed.downloadSpeed)
-        let up = Self.compactSpeed(speed.uploadSpeed)
-        button.title = "↓ \(down) ↑ \(up)"
-    }
-
-    /// Menu-bar-only speed formatter. Drops the `B/s` suffix (implied by context)
-    /// and short-circuits to a single character for the unit (K/M/G). One decimal
-    /// only when the value is small enough to fit. Tuned for visual brevity, not
-    /// general-purpose use — see `FormatUtility.formatSpeed` for the verbose form
-    /// used inside the popover.
-    private static func compactSpeed(_ speed: Double) -> String {
-        // Same non-finite guard as FormatUtility.formatSpeed: NaN fails `<= 0`
-        // and would render literally as "↓nan" in the menu bar.
-        guard speed.isFinite, speed > 0 else { return "0" }
-        let units = ["B", "K", "M", "G"]
-        var value = speed
-        var unitIndex = 0
-        while value >= 1024 && unitIndex < units.count - 1 {
-            value /= 1024
-            unitIndex += 1
-        }
-        if unitIndex == 0 {
-            return String(format: "%.0f%@", value, units[unitIndex])
-        }
-        return value < 10
-            ? String(format: "%.1f%@", value, units[unitIndex])
-            : String(format: "%.0f%@", value, units[unitIndex])
+        button.title = "↓ \(speed.downloadFormatted) ↑ \(speed.uploadFormatted)"
     }
 
     /// Initial title before the first snapshot arrives.

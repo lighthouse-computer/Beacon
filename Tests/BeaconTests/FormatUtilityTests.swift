@@ -32,10 +32,15 @@ final class FormatUtilityTests: XCTestCase {
         XCTAssertEqual(FormatUtility.formatSpeed(twoMB), "2.50 MB/s")
     }
 
-    func test_formatSpeed_capsAtGigabytes() {
+    func test_formatSpeed_terabytesPerSecond_twoDecimals() {
         let oneTb = 1024.0 * 1024.0 * 1024.0 * 1024.0
-        // Largest unit in the table is GB; TB-magnitude values still render in GB.
-        XCTAssertTrue(FormatUtility.formatSpeed(oneTb).hasSuffix(" GB/s"))
+        XCTAssertEqual(FormatUtility.formatSpeed(oneTb), "1.00 TB/s")
+    }
+
+    func test_formatSpeed_capsAtTerabytes() {
+        let onePb = 1024.0 * 1024.0 * 1024.0 * 1024.0 * 1024.0
+        // Largest unit in the table is now TB; PB-magnitude values still render in TB.
+        XCTAssertTrue(FormatUtility.formatSpeed(onePb).hasSuffix(" TB/s"))
     }
 
     // MARK: - formatBytes

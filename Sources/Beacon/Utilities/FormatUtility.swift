@@ -11,7 +11,7 @@ struct FormatUtility {
         guard speed.isFinite else { return "0 B/s" }
         if speed <= 0 { return "0 B/s" }
 
-        let units = ["B", "KB", "MB", "GB"]
+        let units = ["B", "KB", "MB", "GB", "TB"]
         var value = speed
         var unitIndex = 0
         while value >= 1024 && unitIndex < units.count - 1 {

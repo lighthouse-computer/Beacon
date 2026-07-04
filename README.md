@@ -13,7 +13,7 @@ A native macOS menu-bar utility that tells you, second by second, **which apps a
 ## What you get
 
 ### Menu bar
-- **Live total speed** — `↓ 1.2 MB/s  ↑ 305 KB/s`, refreshed every second.
+- **Live total speed** — `↓ 1.2 MB/s ↑ 305 KB/s`, refreshed every second.
 - Left-click opens the popover. Right-click brings up Launch-at-Login + Quit.
 
 ### Popover — the per-app list
