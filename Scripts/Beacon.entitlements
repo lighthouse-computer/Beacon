@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+    Intentionally NOT sandboxed. The app shells out to /usr/bin/nettop and reads
+    /Applications icons via NSWorkspace; both are blocked under the standard
+    App Sandbox. We're distributing as a developer-built local binary, not via
+    the Mac App Store, so this is the right trade-off.
+
+    No special entitlements needed for:
+      - SMAppService.mainApp (works for any signed app bundle)
+      - UNUserNotifications (system handles consent at request time)
+      - Subprocess execution (default for unsandboxed apps)
+    -->
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+</dict>
+</plist>

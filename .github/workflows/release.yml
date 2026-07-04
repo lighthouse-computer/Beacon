@@ -1,0 +1,96 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # required to create a GitHub Release
+
+jobs:
+  release:
+    runs-on: macos-14
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Build (release)
+        run: ./Scripts/build_app.sh
+        env:
+          VERSION: ${{ github.ref_name }}
+
+      # ── Optional: Developer ID signing + notarization ────────────────────
+      # Uncomment once these secrets are configured in the repo settings:
+      #   APPLE_CERT_P12_BASE64       — your Developer ID cert exported as p12, then base64
+      #   APPLE_CERT_PASSWORD         — the export password
+      #   APPLE_SIGNING_IDENTITY      — e.g. "Developer ID Application: Your Name (TEAMID)"
+      #   APPLE_ID
+      #   APPLE_TEAM_ID
+      #   APPLE_APP_SPECIFIC_PASSWORD
+      #
+      # - name: Import signing certificate
+      #   env:
+      #     CERT_BASE64: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+      #     CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+      #   run: |
+      #     echo "$CERT_BASE64" | base64 --decode > cert.p12
+      #     security create-keychain -p actions build.keychain
+      #     security default-keychain -s build.keychain
+      #     security unlock-keychain -p actions build.keychain
+      #     security import cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+      #     security set-key-partition-list -S apple-tool:,apple: -s -k actions build.keychain
+      #
+      # - name: Sign with Developer ID
+      #   run: |
+      #     codesign --force \
+      #       --sign "${{ secrets.APPLE_SIGNING_IDENTITY }}" \
+      #       --options runtime \
+      #       --entitlements Scripts/Beacon.entitlements \
+      #       --timestamp \
+      #       build/Beacon.app
+      #
+      # - name: Notarize
+      #   run: |
+      #     ditto -c -k --keepParent build/Beacon.app NotarizePayload.zip
+      #     xcrun notarytool submit NotarizePayload.zip \
+      #       --apple-id "${{ secrets.APPLE_ID }}" \
+      #       --team-id "${{ secrets.APPLE_TEAM_ID }}" \
+      #       --password "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" \
+      #       --wait
+      #     xcrun stapler staple build/Beacon.app
+      # ─────────────────────────────────────────────────────────────────────
+
+      - name: Package release zip
+        run: |
+          cd build
+          ditto -c -k --keepParent Beacon.app Beacon.app.zip
+          shasum -a 256 Beacon.app.zip > Beacon.app.zip.sha256
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            build/Beacon.app.zip
+            build/Beacon.app.zip.sha256
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+
+      # ── Optional: fire the tap's autobump immediately ────────────────────
+      # The Homebrew cask is kept at the latest release automatically by
+      # `tap-autobump.yml` in the tap repo, which polls hourly — so a new
+      # release is installable-at-latest within the hour with NO setup.
+      #
+      # To make the cask update within seconds instead, create a fine-grained
+      # PAT with `actions: write` on the tap repo, store it here as the
+      # `TAP_DISPATCH_TOKEN` secret, and uncomment this step. It pings the tap's
+      # autobump workflow the moment a release is published.
+      #
+      # - name: Trigger tap autobump
+      #   run: |
+      #     gh workflow run tap-autobump.yml --repo lighthouse-computer/homebrew-tap
+      #   env:
+      #     GH_TOKEN: ${{ secrets.TAP_DISPATCH_TOKEN }}
+      # ─────────────────────────────────────────────────────────────────────

@@ -1,0 +1,132 @@
+name: Auto-bump casks
+
+# Keeps every cask in this tap pinned to its upstream's LATEST GitHub release —
+# fully hands-off. For each `Casks/*.rb`, query the upstream "latest release",
+# and if it's newer than the cask's pinned version, download the asset, verify
+# its sha256 against the release's published `.sha256` sidecar, rewrite
+# `version` + `sha256`, and COMMIT THE BUMP DIRECTLY to this tap's default
+# branch. No PR to merge — the maintainer never hand-edits a cask.
+#
+# Why direct-commit (not a PR): this is a single-maintainer tap and each bump is
+# mechanical + cryptographically verified against the publisher's own sidecar,
+# so a human merge step adds latency without adding safety. (Homebrew-core uses
+# PRs because it has many maintainers; a personal tap does not need that.)
+#
+# Why we roll our own (not `brew bump-cask-pr` / `brew livecheck`): their JSON
+# schema drifts across brew versions and `bump-cask-pr` demands `--version` for
+# third-party casks even when livecheck is configured.
+#
+# Runs hourly; a new release becomes installable-at-latest within the hour. For
+# INSTANT updates, have the upstream release workflow fire a `repository_dispatch`
+# at this repo (needs a cross-repo PAT) — see the commented block in the
+# upstream `release.yml`. The hourly poll needs no extra secrets.
+#
+# Manual trigger: Actions → Auto-bump casks → "Run workflow".
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write       # push the bump commit directly to the default branch
+
+jobs:
+  autobump:
+    runs-on: macos-14
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Configure git author
+        run: |
+          git config user.name  "autobump-bot"
+          git config user.email "autobump-bot@users.noreply.github.com"
+
+      - name: Bump each cask to latest (verified, direct-commit)
+        run: |
+          set -uo pipefail
+          shopt -s nullglob
+
+          default_branch="$(git rev-parse --abbrev-ref HEAD)"
+          bumped=0
+
+          for cask_file in Casks/*.rb; do
+            cask="$(basename "$cask_file" .rb)"
+            echo "::group::${cask}"
+
+            # Upstream owner/repo from the `url` line, which is expected to be:
+            #   url "https://github.com/OWNER/REPO/releases/download/v#{version}/asset.zip"
+            upstream="$(grep -E '^\s*url\s+"https://github\.com/' "$cask_file" \
+                       | head -1 \
+                       | sed -E 's|.*github\.com/([^/]+/[^/]+)/.*|\1|')"
+            if [[ -z "$upstream" ]]; then
+              echo "::warning::could not parse upstream repo from $cask_file"
+              echo "::endgroup::"; continue
+            fi
+
+            current="$(grep -E '^\s*version\s+"' "$cask_file" | head -1 \
+                       | sed -E 's/.*version[[:space:]]+"([^"]+)".*/\1/')"
+            latest_tag="$(gh api "repos/${upstream}/releases/latest" --jq .tag_name 2>/dev/null || true)"
+            latest="${latest_tag#v}"
+
+            if [[ -z "$latest" ]]; then
+              echo "no latest release for ${upstream}"
+              echo "::endgroup::"; continue
+            fi
+            if [[ "$latest" == "$current" ]]; then
+              echo "${cask} already at latest (${current})"
+              echo "::endgroup::"; continue
+            fi
+            echo "${cask}: ${current} → ${latest}"
+
+            # Reconstruct the download URL by substituting the version.
+            url_template="$(grep -E '^\s*url\s+"' "$cask_file" | head -1 \
+                            | sed -E 's|.*url[[:space:]]+"([^"]+)".*|\1|')"
+            new_url="${url_template//\#\{version\}/$latest}"
+
+            tmp="$(mktemp -d)"
+            asset="${tmp}/$(basename "$new_url")"
+            if ! curl -fsSL "$new_url" -o "$asset"; then
+              echo "::warning::failed to download ${new_url}"
+              echo "::endgroup::"; continue
+            fi
+            new_sha="$(shasum -a 256 "$asset" | awk '{print $1}')"
+
+            # Defense-in-depth: cross-check the computed sha against the
+            # publisher's own `<asset>.sha256` sidecar. Catches a corrupted /
+            # truncated download before we pin a bad hash. (It does NOT defend
+            # against a release fully swapped by someone with repo-write — that
+            # needs notarization; tracked separately.)
+            published_sha="$(curl -fsSL "${new_url}.sha256" 2>/dev/null | awk '{print $1}' || true)"
+            if [[ -n "$published_sha" && "$published_sha" != "$new_sha" ]]; then
+              echo "::error::sha mismatch for ${cask} v${latest}: computed ${new_sha} != published ${published_sha} — skipping"
+              echo "::endgroup::"; continue
+            fi
+
+            # In-place version + sha256 rewrite (BSD sed needs '' after -i).
+            sed -E -i '' "s|^([[:space:]]*version[[:space:]]+)\"[^\"]+\"|\1\"${latest}\"|" "$cask_file"
+            sed -E -i '' "s|^([[:space:]]*sha256[[:space:]]+)\"[a-f0-9]{64}\"|\1\"${new_sha}\"|" "$cask_file"
+
+            if git diff --quiet "$cask_file"; then
+              echo "no textual change for ${cask} — skipping"
+              echo "::endgroup::"; continue
+            fi
+
+            git add "$cask_file"
+            git commit -m "${cask} ${current} → ${latest}"
+            bumped=1
+            echo "::endgroup::"
+          done
+
+          if [[ "$bumped" == "1" ]]; then
+            # Rebase-safe push in case another run landed between checkout and now.
+            git pull --rebase origin "$default_branch" || true
+            git push origin "HEAD:${default_branch}"
+          else
+            echo "all casks already at latest — nothing to commit"
+          fi
+          # Always succeed: up-to-date is the normal state.
+          exit 0
