@@ -16,6 +16,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Test
+        run: swift test
+
       - name: Build (release)
         run: ./Scripts/build_app.sh
         env:
