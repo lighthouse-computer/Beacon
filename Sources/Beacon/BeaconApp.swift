@@ -17,7 +17,18 @@ enum BeaconMain {
     /// Held for the process lifetime so the delegate isn't deallocated.
     private static var delegate: AppDelegate?
 
+    /// True only when `--version` is the sole argument. Pure so it can be tested.
+    static func wantsVersion(_ args: [String]) -> Bool {
+        args.count == 1 && args[0] == "--version"
+    }
+
     static func main() {
+        // Handled before any UI or monitoring starts; CI uses it as a launch smoke test.
+        if wantsVersion(Array(CommandLine.arguments.dropFirst())) {
+            let v = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
+            print(v)
+            exit(0)
+        }
         let app = NSApplication.shared
         let delegate = AppDelegate()
         Self.delegate = delegate
