@@ -22,11 +22,20 @@ jobs:
       - name: Build (debug)
         run: swift build -c debug
 
+      - name: Test
+        run: swift test
+
       - name: Build (release)
         run: swift build -c release
 
       - name: Assemble app bundle
         run: ./Scripts/build_app.sh
+
+      - name: Smoke test (launches and exits cleanly)
+        run: |
+          out=$(perl -e 'alarm 20; exec @ARGV' build/Beacon.app/Contents/MacOS/Beacon --version)
+          echo "version: $out"
+          test -n "$out"
 
       - name: Verify code signature
         run: codesign --verify --verbose=2 build/Beacon.app

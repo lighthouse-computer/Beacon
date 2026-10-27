@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 swift build                       # debug build
-swift build -c release            # release build (what CI gates on)
+swift build -c release            # release build (CI also runs swift test)
 swift test                        # run all tests — REQUIRES Xcode's toolchain (see below)
 swift test --filter NettopLineParserTests            # one test class
 swift test --filter NettopLineParserTests/testFoo    # one test method
@@ -24,6 +24,11 @@ swift test --filter NettopLineParserTests/testFoo    # one test method
 - **`swift test` needs Xcode's full toolchain**, not the Command Line Tools — the test target imports `XCTest`. If you see `no such module 'XCTest'`, run `xcode-select -p` and point it at `Xcode.app`.
 - **After a target rename or module-name change, `rm -rf .build`** — SwiftPM's cache pins the old path and fails a stale first build.
 - The runnable product is a hand-assembled `.app` bundle (SwiftPM only emits the bare executable); `Scripts/build_app.sh` copies the binary + `Scripts/Info.plist`, ad-hoc-signs with `Scripts/Beacon.entitlements`, and stamps the version.
+
+## Agent checks
+
+- Verify command (run it and show its output before saying "done"): `swift build && swift test`
+- Critical paths (any change here is Critical stakes: blind sign-off, never auto-merged): `.github/workflows/**`, `Scripts/build_app.sh`, `Scripts/build_release.sh`, `Scripts/Beacon.entitlements`, `Scripts/Info.plist`, `DISTRIBUTION.md`, `Sources/Beacon/Managers/ProcessControl.swift` (kills processes), `Sources/Beacon/Managers/ProcessClassifier.swift` (code-signature checks), `Sources/Beacon/Managers/NetworkMonitor.swift` (spawns nettop), `Distribution/beacon.rb`
 
 ## Architecture — the load-bearing decisions
 

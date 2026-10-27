@@ -137,7 +137,7 @@ beacon/
 └── Tests/BeaconTests/
 ```
 
-> **Building & testing:** CI gates on `swift build`. The test target needs `XCTest`, so run `swift test` with Xcode's toolchain selected (`xcode-select -p` should point at `Xcode.app`, not the Command Line Tools).
+> **Building & testing:** CI gates on `swift build` and `swift test`. The test target needs `XCTest`, so run `swift test` with Xcode's toolchain selected (`xcode-select -p` should point at `Xcode.app`, not the Command Line Tools).
 
 ---
 
